@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Aya  & Mahmoud  — Wedding Invitation</title>
+<title>Farah  & Mahmoud  — Wedding Invitation</title>
 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cinzel:wght@300;400&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1048,9 +1048,12 @@
   /* ══════════════════════════════════════════
      GOOGLE SHEETS MESSAGE READER
   ══════════════════════════════════════════ */
-  const SHEET_ID  = '1OeHnegAz51DjPrwelPhOiz-_E6_LsSC9BF7kOrdIXTU';
+  const SHEET_ID  = '1McD08PUab3nti7ErTP7GUo_iWW91JzH2ek49QSbcESY';
   const SHEET_GID = '0';
-  const CSV_URL   = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+  // Use the published CSV URL — requires File → Share → Publish to web → CSV
+  // This avoids CORS redirect issues that the /export URL can trigger
+  const CSV_URL_PUB    = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?output=csv&gid=${SHEET_GID}`;
+  const CSV_URL_EXPORT = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
 
   let messages     = [];  // { body, signature, attending, guests }
   let currentIndex = 0;
@@ -1082,12 +1085,33 @@
     return rows;
   }
 
+  async function fetchCSV(url) {
+    const res = await fetch(url, { credentials: 'omit', redirect: 'follow' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    // If Google returns an HTML error/login page instead of CSV, throw
+    if (text.trim().startsWith('<!')) throw new Error('Got HTML instead of CSV');
+    return text;
+  }
+
   async function loadSheetMessages() {
+    let text;
     try {
-      const res = await fetch(CSV_URL);
-      if (!res.ok) throw new Error('Fetch failed');
-      const text  = await res.text();
-      const rows  = parseCSV(text);
+      // Try published URL first (most reliable for public sheets)
+      text = await fetchCSV(CSV_URL_PUB);
+    } catch (e1) {
+      console.warn('pub URL failed, trying export URL:', e1);
+      try {
+        text = await fetchCSV(CSV_URL_EXPORT);
+      } catch (e2) {
+        console.error('Both CSV URLs failed:', e2);
+        showSheetError();
+        return;
+      }
+    }
+
+    try {
+      const rows = parseCSV(text);
       // Row 0 = headers; data starts at row 1
       // Col B (idx 1) = name/signature, Col C (idx 2) = attending, Col D (idx 3) = guests, Col E (idx 4) = message
 
@@ -1114,7 +1138,7 @@
         showSheetError('No messages found in the sheet.');
       }
     } catch (err) {
-      console.error('Sheet load error:', err);
+      console.error('Sheet parse error:', err);
       showSheetError();
     }
   }
@@ -1147,7 +1171,7 @@
     const { attending, notAttending, pending, totalGuests, total, messages: msgs } = dashStats;
     document.getElementById('dashAttending').textContent   = attending;
     document.getElementById('dashCelebrating').textContent = notAttending;
-    document.getElementById('dashTotalGuests').textContent = attending + totalGuests;
+    document.getElementById('dashTotalGuests').textContent = totalGuests;  // already includes each submitter
     document.getElementById('dashMessages').textContent    = msgs;
 
     const pA = total > 0 ? Math.round(attending / total * 100) : 0;
@@ -1168,7 +1192,7 @@
     // Insights
     const insights = [];
     if (attending + totalGuests > 0)
-      insights.push({ icon: '✦', text: `${attending + totalGuests} cherished ${attending + totalGuests === 1 ? 'soul' : 'souls'} will grace the celebration.` });
+      insights.push({ icon: '✦', text: `${totalGuests} cherished ${totalGuests === 1 ? 'soul' : 'souls'} will grace the celebration.` });
     if (msgs > 0)
       insights.push({ icon: '✉', text: `${msgs} heartfelt ${msgs === 1 ? 'message has' : 'messages have'} been shared with the couple.` });
     if (pending > 0)
@@ -1233,8 +1257,9 @@
         badge.className = 'attend-badge ' + (isAtt ? 'attending' : 'not-attending');
         badge.innerHTML = `<span class="attend-dot"></span>${isAtt ? 'Joyfully Attending' : 'Celebrating in Spirit'}`;
         badge.style.display = 'inline-flex';
-        if (isAtt && m.guests > 0) {
-          guestBdg.innerHTML = `✦ &nbsp;Joining with ${m.guests} guest${m.guests > 1 ? 's' : ''}`;
+        if (isAtt && m.guests > 1) {
+          const extras = m.guests - 1; // subtract themselves
+          guestBdg.innerHTML = `✦ &nbsp;Bringing ${extras} guest${extras > 1 ? 's' : ''}`;
           guestBdg.style.display = 'inline-flex';
         } else {
           guestBdg.style.display = 'none';
@@ -1300,7 +1325,7 @@
 </script>
 
 <audio id="bgMusic" loop preload="auto">
-  <source src="Yann Tiersen - Amelie.mp3" type="audio/mpeg">
+  <source src="Mariage_d_Amour.mp3" type="audio/mpeg">
 </audio>
 
 <!-- Music Player Button -->
@@ -1465,7 +1490,7 @@
     <div class="wave-bars">
       <span></span><span></span><span></span><span></span>
     </div>
-    <div id="musicTrackName">Amélie</div>
+    <div id="musicTrackName">Mariage d'Amour</div>
   </div>
 </div>
 
@@ -1518,7 +1543,7 @@
 </div>
 
 <div id="loadingScreen">
-  <div class="loading-title">Aya  & Mahmoud </div>
+  <div class="loading-title">Farah  & Mahmoud </div>
   <div class="loading-sub">Loading your messages</div>
   <div class="loading-bar-wrap"><div class="loading-bar" id="loadingBar"></div></div>
   <div class="loading-dots"><span></span><span></span><span></span></div>
@@ -1548,18 +1573,19 @@
     musicPlaying = !musicPlaying;
   }
 
-  // Loading logic
-  var htmlReady = false;
-  var audioReady = false;
-  var loadingBar = document.getElementById('loadingBar');
+  // Loading logic — three gates: DOM parsed, both images loaded, audio ready
+  var htmlReady   = false;
+  var imagesReady = false;
+  var audioReady  = false;
+  var loadingBar  = document.getElementById('loadingBar');
 
   function updateProgress() {
-    var progress = (htmlReady ? 50 : 0) + (audioReady ? 50 : 0);
+    var progress = (htmlReady ? 34 : 0) + (imagesReady ? 33 : 0) + (audioReady ? 33 : 0);
     loadingBar.style.width = progress + '%';
   }
 
   function tryReveal() {
-    if (htmlReady && audioReady) {
+    if (htmlReady && imagesReady && audioReady) {
       setTimeout(function() {
         var screen = document.getElementById('loadingScreen');
         screen.classList.add('fade-out');
@@ -1568,26 +1594,57 @@
     }
   }
 
-  // HTML/DOM fully parsed
+  // Gate 1: DOM parsed — then immediately watch image elements
   window.addEventListener('DOMContentLoaded', function() {
     htmlReady = true;
     updateProgress();
-    tryReveal();
+
+    // Gate 2: both envelope images fully loaded
+    var imgs = [
+      document.querySelector('.env-body img'),
+      document.querySelector('.env-flap img')
+    ].filter(Boolean);
+
+    if (imgs.length === 0) {
+      imagesReady = true;
+      updateProgress();
+      tryReveal();
+      return;
+    }
+
+    var loaded = 0;
+    function onImgDone() {
+      loaded++;
+      if (loaded >= imgs.length) {
+        imagesReady = true;
+        updateProgress();
+        tryReveal();
+      }
+    }
+
+    imgs.forEach(function(img) {
+      if (img.complete && img.naturalWidth > 0) {
+        onImgDone();
+      } else {
+        img.addEventListener('load',  onImgDone, { once: true });
+        img.addEventListener('error', onImgDone, { once: true }); // still proceed on broken image
+      }
+    });
   });
 
-  // Audio sufficiently loaded to play
+  // Gate 3: audio sufficiently loaded to play
   music.addEventListener('canplaythrough', function() {
     audioReady = true;
     updateProgress();
     tryReveal();
   });
 
-  // Fallback: reveal after 6s regardless
+  // Hard fallback: reveal after 10s no matter what (slow connections / missing audio)
   setTimeout(function() {
-    audioReady = true; htmlReady = true;
+    audioReady = true; htmlReady = true; imagesReady = true;
     updateProgress();
     tryReveal();
-  }, 6000);
+  }, 10000);
 
   // Auto-play on first user interaction
   document.addEventListener('click', function autoPlay() {
